@@ -359,64 +359,43 @@ namespace vcg {
     *
     */
 
-template<class T>
-bool IntersectionLineTriangle( const Line3<T> & line, const Point3<T> & vert0,
-                  const Point3<T> & vert1, const Point3<T> & vert2,
-                  T & t ,T & u, T & v)
-{
-    #define EPSIL 0.000001
+  template <class T>
+  bool IntersectionLineTriangle(const vcg::Line3<T>& line,
+                                const vcg::Point3<T>& vert0,
+                                const vcg::Point3<T>& vert1,
+                                const vcg::Point3<T>& vert2,
+                                T& t,
+                                T& u,
+                                T& v) {
+     #define EPSIL  1e-6
 
-    vcg::Point3<T> edge1, edge2, tvec, pvec, qvec;
-    T det,inv_det;
+    vcg::Point3<T> edge1 = vert1 - vert0;
+    vcg::Point3<T> edge2 = vert2 - vert0;
 
-   /* find vectors for two edges sharing vert0 */
-   edge1 = vert1 - vert0;
-   edge2 = vert2 - vert0;
+    vcg::Point3<T> pvec = line.Direction() ^ edge2;
+    T det = edge1 * pvec;
 
-   /* begin calculating determinant - also used to calculate U parameter */
-   pvec =  line.Direction() ^ edge2;
+    if (std::abs(det) < EPSIL) return false;  // 平行或退化三角形
 
-   /* if determinant is near zero, line lies in plane of triangle */
-   det =  edge1 *  pvec;
+    T inv_det = T(1.0) / det;
+    vcg::Point3<T> tvec = line.Origin() - vert0;
 
-   /* calculate distance from vert0 to line origin */
-   tvec = line.Origin() - vert0;
-   inv_det = 1.0 / det;
+    u = (tvec * pvec) * inv_det;
+    if (u < -EPSIL || u > T(1.0) + EPSIL) return false;
 
-   qvec = tvec ^ edge1;
+    vcg::Point3<T> qvec = tvec ^ edge1;
+    v = (line.Direction() * qvec) * inv_det;
+    if (v < -EPSIL || u + v > T(1.0) + EPSIL) return false;
 
-   if (det > EPSIL)
-   {
-      u =  tvec * pvec ;
-      if ( u < 0.0 ||  u > det)
-     return 0;
+    if(u< 0) u =0;
+    if(u>1) u =1;
+    if(v< 0) v =0;
+    if(v>1) v =1;
 
-      /* calculate V parameter and test bounds */
-       v =  line.Direction() * qvec;
-      if ( v < 0.0 ||  u +  v > det)
-     return 0;
+    t = (edge2 * qvec) * inv_det;
 
-   }
-   else if(det < -EPSIL)
-   {
-      /* calculate U parameter and test bounds */
-       u =  tvec * pvec ;
-      if ( u > 0.0 ||  u < det)
-     return 0;
-
-      /* calculate V parameter and test bounds */
-       v =  line.Direction() * qvec  ;
-      if ( v > 0.0 ||  u +  v < det)
-     return 0;
-   }
-   else return 0;  /* line is parallell to the plane of the triangle */
-
-    t = edge2 *  qvec  * inv_det;
-   ( u) *= inv_det;
-   ( v) *= inv_det;
-
-   return 1;
-}
+    return true;
+  }
 
 /**
      Computes the intersection between a Ray and a Triangle. Returns the hitDistance and the baricentric coordinates of the hit point.
